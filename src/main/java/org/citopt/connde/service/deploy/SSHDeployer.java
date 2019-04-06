@@ -10,6 +10,7 @@ import org.citopt.connde.service.NetworkService;
 import org.citopt.connde.service.settings.SettingsService;
 import org.citopt.connde.service.settings.model.BrokerLocation;
 import org.citopt.connde.service.settings.model.Settings;
+import org.citopt.connde.util.DebugFileLogger;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -168,11 +169,21 @@ public class SSHDeployer {
         LOGGER.log(Level.FINE, "Deploy request for component: " + "{0} (Type: {1})",
                 new Object[]{component.getId(), component.getComponentTypeName()});
 
+        Logger timeLogger = DebugFileLogger.createLogger("TimeLogger", "timelog.txt");
+
+        timeLogger.info("Start");
+
+        //TODO
+        long millisStart = System.currentTimeMillis();
+
         //Get dedicated device of the component
         Device device = component.getDevice();
 
         //Establish new SSH session
         SSHSession sshSession = establishSSHConnection(device);
+
+        //TODO
+        timeLogger.info("Session established: " + (System.currentTimeMillis() - millisStart));
 
         //Resolve deployment path
         String deploymentPath = getDeploymentPath(component);
@@ -181,6 +192,9 @@ public class SSHDeployer {
         LOGGER.log(Level.FINE, "Deploying to directory {1} ...", new Object[]{deploymentPath});
         sshSession.createDir(deploymentPath);
         LOGGER.log(Level.FINE, "Created directory successfully");
+
+        //TODO
+        timeLogger.info("Dir created: " + (System.currentTimeMillis() - millisStart));
 
         //Retrieve adapter
         Adapter adapter = component.getAdapter();
@@ -210,8 +224,14 @@ public class SSHDeployer {
         }
         LOGGER.log(Level.FINE, "Copying adapter files was successful");
 
+        //TODO
+        timeLogger.info("Files copied: " + (System.currentTimeMillis() - millisStart));
+
         //Resolve own IP address that might be used as broker IP address
         String brokerIP = networkService.getOwnIPAddress();
+
+        //TODO
+        timeLogger.info("IP address resolved: " + (System.currentTimeMillis() - millisStart));
 
         //Determine from settings if a remote broker should be used
         Settings settings = settingsService.getSettings();
@@ -230,7 +250,13 @@ public class SSHDeployer {
 
         //Execute install script
         sshSession.changeFilePermissions(deploymentPath + "/" + INSTALL_SCRIPT_NAME, "+x");
+
+        //TODO
+        timeLogger.info("Permissions set: " + (System.currentTimeMillis() - millisStart));
+
         sshSession.executeShellScript(deploymentPath + "/" + INSTALL_SCRIPT_NAME, topicName, brokerIP, deploymentPath);
+        //TODO
+        timeLogger.info("Install script executed: " + (System.currentTimeMillis() - millisStart));
 
         LOGGER.log(Level.FINE, "Installation was successful");
 
@@ -240,15 +266,32 @@ public class SSHDeployer {
 
         //Execute start script with parameters
         sshSession.changeFilePermissions(deploymentPath + "/" + START_SCRIPT_NAME, "u+rwx");
+
+        //TODO
+        timeLogger.info("Permissions set: " + (System.currentTimeMillis() - millisStart));
+
         sshSession.executeShellScript(deploymentPath + "/" + START_SCRIPT_NAME, deploymentPath, jsonString);
+
+        //TODO
+        timeLogger.info("Start script executed: " + (System.currentTimeMillis() - millisStart));
 
         LOGGER.log(Level.FINE, "Start was successful");
 
         //Set permissions of other shell scripts
         sshSession.changeFilePermissions(deploymentPath + "/" + RUN_SCRIPT_NAME, "+x");
+
+        //TODO
+        timeLogger.info("Permissions set: " + (System.currentTimeMillis() - millisStart));
+
         sshSession.changeFilePermissions(deploymentPath + "/" + STOP_SCRIPT_NAME, "+x");
 
+        //TODO
+        timeLogger.info("Permissions set: " + (System.currentTimeMillis() - millisStart));
+
         LOGGER.log(Level.FINE, "Deployment was successful");
+
+        //TODO
+        timeLogger.info("Finished: " + (System.currentTimeMillis() - millisStart));
     }
 
     /**
