@@ -10,7 +10,6 @@ import org.citopt.connde.service.NetworkService;
 import org.citopt.connde.service.settings.SettingsService;
 import org.citopt.connde.service.settings.model.BrokerLocation;
 import org.citopt.connde.service.settings.model.Settings;
-import org.citopt.connde.util.DebugFileLogger;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -19,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -160,7 +160,7 @@ public class SSHDeployer {
      * @param parameterInstanceList List of parameter instances to pass to the start script
      * @throws IOException In case of an I/O issue
      */
-    public void deployComponent(Component component, List<ParameterInstance> parameterInstanceList) throws IOException {
+    public List<String> deployComponent(Component component, List<ParameterInstance> parameterInstanceList) throws IOException {
         //Validity check
         if (component == null) {
             throw new IllegalArgumentException("Component must not be null.");
@@ -169,12 +169,12 @@ public class SSHDeployer {
         LOGGER.log(Level.FINE, "Deploy request for component: " + "{0} (Type: {1})",
                 new Object[]{component.getId(), component.getComponentTypeName()});
 
-        Logger timeLogger = DebugFileLogger.createLogger("TimeLogger", "timelog.txt");
-
-        timeLogger.info("Start");
+        List<String> logs = new ArrayList<>();
 
         //TODO
         long millisStart = System.currentTimeMillis();
+        
+        logs.add("Start");
 
         //Get dedicated device of the component
         Device device = component.getDevice();
@@ -183,7 +183,7 @@ public class SSHDeployer {
         SSHSession sshSession = establishSSHConnection(device);
 
         //TODO
-        timeLogger.info("Session established: " + (System.currentTimeMillis() - millisStart));
+        logs.add("Session established: " + (System.currentTimeMillis() - millisStart));
 
         //Resolve deployment path
         String deploymentPath = getDeploymentPath(component);
@@ -194,7 +194,7 @@ public class SSHDeployer {
         LOGGER.log(Level.FINE, "Created directory successfully");
 
         //TODO
-        timeLogger.info("Dir created: " + (System.currentTimeMillis() - millisStart));
+        logs.add("Dir created: " + (System.currentTimeMillis() - millisStart));
 
         //Retrieve adapter
         Adapter adapter = component.getAdapter();
@@ -225,13 +225,13 @@ public class SSHDeployer {
         LOGGER.log(Level.FINE, "Copying adapter files was successful");
 
         //TODO
-        timeLogger.info("Files copied: " + (System.currentTimeMillis() - millisStart));
+        logs.add("Files copied: " + (System.currentTimeMillis() - millisStart));
 
         //Resolve own IP address that might be used as broker IP address
         String brokerIP = networkService.getOwnIPAddress();
 
         //TODO
-        timeLogger.info("IP address resolved: " + (System.currentTimeMillis() - millisStart));
+        logs.add("IP address resolved: " + (System.currentTimeMillis() - millisStart));
 
         //Determine from settings if a remote broker should be used
         Settings settings = settingsService.getSettings();
@@ -252,11 +252,11 @@ public class SSHDeployer {
         sshSession.changeFilePermissions(deploymentPath + "/" + INSTALL_SCRIPT_NAME, "+x");
 
         //TODO
-        timeLogger.info("Permissions set: " + (System.currentTimeMillis() - millisStart));
+        logs.add("Permissions set: " + (System.currentTimeMillis() - millisStart));
 
         sshSession.executeShellScript(deploymentPath + "/" + INSTALL_SCRIPT_NAME, topicName, brokerIP, deploymentPath);
         //TODO
-        timeLogger.info("Install script executed: " + (System.currentTimeMillis() - millisStart));
+        logs.add("Install script executed: " + (System.currentTimeMillis() - millisStart));
 
         LOGGER.log(Level.FINE, "Installation was successful");
 
@@ -268,12 +268,12 @@ public class SSHDeployer {
         sshSession.changeFilePermissions(deploymentPath + "/" + START_SCRIPT_NAME, "u+rwx");
 
         //TODO
-        timeLogger.info("Permissions set: " + (System.currentTimeMillis() - millisStart));
+        logs.add("Permissions set: " + (System.currentTimeMillis() - millisStart));
 
         sshSession.executeShellScript(deploymentPath + "/" + START_SCRIPT_NAME, deploymentPath, jsonString);
 
         //TODO
-        timeLogger.info("Start script executed: " + (System.currentTimeMillis() - millisStart));
+        logs.add("Start script executed: " + (System.currentTimeMillis() - millisStart));
 
         LOGGER.log(Level.FINE, "Start was successful");
 
@@ -281,17 +281,19 @@ public class SSHDeployer {
         sshSession.changeFilePermissions(deploymentPath + "/" + RUN_SCRIPT_NAME, "+x");
 
         //TODO
-        timeLogger.info("Permissions set: " + (System.currentTimeMillis() - millisStart));
+        logs.add("Permissions set: " + (System.currentTimeMillis() - millisStart));
 
         sshSession.changeFilePermissions(deploymentPath + "/" + STOP_SCRIPT_NAME, "+x");
 
         //TODO
-        timeLogger.info("Permissions set: " + (System.currentTimeMillis() - millisStart));
+        logs.add("Permissions set: " + (System.currentTimeMillis() - millisStart));
 
         LOGGER.log(Level.FINE, "Deployment was successful");
 
         //TODO
-        timeLogger.info("Finished: " + (System.currentTimeMillis() - millisStart));
+        logs.add("Finished: " + (System.currentTimeMillis() - millisStart));
+
+        return logs;
     }
 
     /**

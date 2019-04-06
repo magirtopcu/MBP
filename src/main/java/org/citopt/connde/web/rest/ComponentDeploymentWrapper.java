@@ -107,16 +107,18 @@ public class ComponentDeploymentWrapper {
             }
         }
 
+        List<String> logs = null;
+
         //Deploy component
         try {
-            sshDeployer.deployComponent(component, parameterInstances);
+            logs = sshDeployer.deployComponent(component, parameterInstances);
         } catch (IOException e) {
             ActionResponse response = new ActionResponse(false, "An unknown error occurred");
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         //Success
-        ActionResponse response = new ActionResponse(true, "Success");
+        ActionResponse response = new ActionResponse(true, logs.toString());
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
